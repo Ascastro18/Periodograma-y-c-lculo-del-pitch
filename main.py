@@ -2,13 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from scipy.signal import welch, spectrogram, windows
-import warnings
 
-# Evitar advertencias de log(0)
-warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # Función para calcular el Periodograma estándar
-def compute_fft_periodogram(x, fs):
+def Periodograma_Estandar(x, fs):
     N = len(x)
     X = np.fft.fft(x)
     Pxx = (np.abs(X)**2) / (fs * N)
@@ -17,7 +14,7 @@ def compute_fft_periodogram(x, fs):
     return f[idx], Pxx[idx]
 
 # Función para calcular el Periodograma Ventaneado
-def compute_windowed_periodogram(x, fs, window='hamming'):
+def Periodograma_Ventaneado(x, fs, window='hamming'):
     N = len(x)
     w = getattr(windows, window)(N)
     xw = x * w
@@ -29,7 +26,7 @@ def compute_windowed_periodogram(x, fs, window='hamming'):
     return f[idx], Pxxw[idx]
 
 # Función para el método de Welch
-def compute_welch_psd(x, fs, nperseg=1024, noverlap=None, window='hamming'):
+def metodo_welch(x, fs, nperseg=1024, noverlap=None, window='hamming'):
     f, Pxx = welch(x, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap)
     return f, Pxx
 
@@ -46,25 +43,25 @@ def detect_pitch(f, Pxx, harmonic_threshold=0.1):
     return f_peak
 
 # Clasificar la voz en función de la cercanía a la media de cada rango
-def classify_voice_by_mean(pitch):
+def Clasificacion_media(pitch):
     medios = {'Bajo': 208, 'Tenor': 326, 'Soprano': 570}
     clasificacion = min(medios, key=lambda k: abs(medios[k] - pitch))
     return clasificacion
 
 # Función principal para analizar la voz
-def analyze_voice(file_path, method_params=None):
+def analizar_voz(file_path, method_params=None):
     fs, x = wavfile.read(file_path)
     if x.ndim > 1:
         x = x.mean(axis=1)
 
     # Periodogramas y PSD
-    f1, P1 = compute_fft_periodogram(x, fs)
+    f1, P1 = Periodograma_Estandar(x, fs)
     win = method_params.get('window', 'hamming')
-    f2, P2 = compute_windowed_periodogram(x, fs, window=win)
+    f2, P2 = Periodograma_Ventaneado(x, fs, window=win)
     nperseg = method_params.get('nperseg', 1024)
     noverlap = method_params.get('noverlap', nperseg // 2)
     wind = method_params.get('window', 'hamming')
-    f3, P3 = compute_welch_psd(x, fs, nperseg, noverlap, window=wind)
+    f3, P3 = metodo_welch(x, fs, nperseg, noverlap, window=wind)
 
     # Detección de pitch
     pitches = {
@@ -77,8 +74,8 @@ def analyze_voice(file_path, method_params=None):
     average_pitch = np.mean(list(pitches.values()))
 
     # Clasificación usando el pitch promedio
-    voice_type = classify_voice_by_mean(average_pitch)
-    print(f"Pitch Promedio: {average_pitch:.2f} Hz, Clasificación: {voice_type}")
+    Tipo_Voz = Clasificacion_media(average_pitch)
+    print(f"Pitch Promedio: {average_pitch:.2f} Hz, Clasificación: {Tipo_Voz}")
 
     # Gráficas
     plt.figure(figsize=(12, 8))
@@ -113,11 +110,11 @@ def analyze_voice(file_path, method_params=None):
     plt.colorbar(label='PSD (dB/Hz)')
     plt.show()
 
-    return pitches, voice_type
+    return pitches, Tipo_Voz
 
 if __name__ == '__main__':
     files = ['voz1.wav', 'voz2.wav', 'voz3.wav']
     params = {'window': 'hamming', 'nperseg': 1024, 'noverlap': 512}
     for vf in files:
         print(f"\nAnálisis de {vf}")
-        analyze_voice(vf, method_params=params)
+        analizar_voz(vf, method_params=params)
